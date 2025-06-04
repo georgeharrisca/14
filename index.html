@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Reassign XML Part IDs</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    select, input, button {
+      margin: 10px 0;
+      padding: 8px;
+    }
+    .mapping-row {
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Reassign XML Part Identifiers</h1>
+  
+  <label for="fileSelect">Select XML Parts:</label>
+  <select id="fileSelect" multiple size="6">
+    <!-- Example options; update with real GitHub file URLs -->
+    <option value="https://raw.githubusercontent.com/georgeharrisca/12/main/partA.xml">A</option>
+    <option value="https://raw.githubusercontent.com/georgeharrisca/12/main/partB.xml">B</option>
+    <option value="https://raw.githubusercontent.com/georgeharrisca/12/main/partC.xml">C</option>
+  </select>
+  
+  <br/>
+  <button onclick="generateMappingForm()">Next: Assign New Part Numbers</button>
+
+  <div id="mappingForm"></div>
+  <button id="processButton" style="display:none;" onclick="processAndDownload()">Reassign and Download</button>
+
+  <script>
+    const mappingData = [];
+
+    function generateMappingForm() {
+      const select = document.getElementById("fileSelect");
+      const selectedOptions = Array.from(select.selectedOptions);
+      const formDiv = document.getElementById("mappingForm");
+      formDiv.innerHTML = ""; // Clear previous mappings
+      mappingData.length = 0;
+
+      if (selectedOptions.length === 0) {
+        alert("Please select at least one XML part file.");
+        return;
+      }
+
+      selectedOptions.forEach((opt, index) => {
+        const label = document.createElement("label");
+        label.textContent = `${opt.text} - P`;
+
+        const input = document.createElement("input");
+        input.type = "number";
+        input.min = "1";
+        input.placeholder = "New Part Number";
+        input.required = true;
+        input.dataset.url = opt.value;
+        input.dataset.oldPartName = opt.text;
+
+        const row = document.createElement("div");
+        row.className = "mapping-row";
+        row.appendChild(label);
+        row.appendChild(input);
+        formDiv.appendChild(row);
+      });
+
+      document.getElementById("processButton").style.display = "inline-block";
+    }
+
+    async function processAndDownload() {
+      const inputs = document.querySelectorAll("#mappingForm input");
+      const filesToProcess = [];
+
+      for (let input of inputs) {
+        const newPartNumber = input.value.trim();
+        if (!newPartNumber || isNaN(newPartNumber)) {
+          alert("All part numbers must be filled in with valid numbers.");
+          return;
+        }
+
+        filesToProcess.push({
+          url: input.dataset.url,
+          newPartID: "P" + newPartNumber,
+          oldPartName: input.dataset.oldPartName
+        });
+      }
+
+      for (let file of filesToProcess) {
+        try {
+          const response = await fetch(file.url);
+          const xml = await response.text();
+
+          // Guess old part ID by finding <score-part id="PX">
+          const match = xml.match(/<score-part id="(P\d+)">/);
+          if (!match) {
+            alert(`Could not find part ID in file ${file.oldPartName}`);
+            continue;
+          }
+
+          const oldPartID = match[1];
+          const newXml = xml.replaceAll(oldPartID, file.newPartID);
+
+          const blob = new Blob([newXml], { type: "application/xml" });
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = `${file.oldPartName}_reassigned.xml`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } catch (e) {
+          alert(`Error processing ${file.oldPartName}: ${e.message}`);
+        }
+      }
+    }
+  </script>
+</body>
+</html>
