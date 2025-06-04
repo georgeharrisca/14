@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Reassign XML Part IDs</title>
+  <title>Reassign XML Part Identifiers</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -21,9 +21,8 @@
 <body>
   <h1>Reassign XML Part Identifiers</h1>
   
-  <label for="fileSelect">Select XML Parts:</label>
+  <label for="fileSelect">Select XML Parts:</label><br/>
   <select id="fileSelect" multiple size="6">
-    <!-- Example options; update with real GitHub file URLs -->
     <option value="https://raw.githubusercontent.com/georgeharrisca/14/main/tbm%20voice.xml">tbm voice</option>
     <option value="https://raw.githubusercontent.com/georgeharrisca/14/main/tbm%20ukulele.xml">tbm ukulele</option>
     <option value="https://raw.githubusercontent.com/georgeharrisca/14/main/tbm%20piano.xml">tbm piano</option>
@@ -38,64 +37,64 @@
   <button id="processButton" style="display:none;" onclick="processAndDownload()">Reassign and Download</button>
 
   <script>
-    const mappingData = [];
+    function generateMappingForm() {
+      const select = document.getElementById("fileSelect");
+      const selectedOptions = Array.from(select.selectedOptions);
+      const formDiv = document.getElementById("mappingForm");
+      formDiv.innerHTML = ""; // Clear previous mappings
 
-function generateMappingForm() {
-  const select = document.getElementById("fileSelect");
-  const selectedOptions = Array.from(select.selectedOptions);
-  const formDiv = document.getElementById("mappingForm");
-  formDiv.innerHTML = ""; // Clear previous mappings
-  mappingData.length = 0;
+      if (selectedOptions.length === 0) {
+        alert("Please select at least one XML part file.");
+        return;
+      }
 
-  if (selectedOptions.length === 0) {
-    alert("Please select at least one XML part file.");
-    return;
-  }
+      const maxParts = selectedOptions.length;
 
-  const maxParts = selectedOptions.length;
+      selectedOptions.forEach((opt, index) => {
+        const label = document.createElement("label");
+        label.textContent = `${opt.text} - P`;
 
-  selectedOptions.forEach((opt, index) => {
-    const label = document.createElement("label");
-    label.textContent = `${opt.text} - P`;
+        const dropdown = document.createElement("select");
+        dropdown.dataset.url = opt.value;
+        dropdown.dataset.oldPartName = opt.text;
 
-    const dropdown = document.createElement("select");
-    dropdown.dataset.url = opt.value;
-    dropdown.dataset.oldPartName = opt.text;
-
-    // Add options 1 through maxParts
-    for (let i = 1; i <= maxParts; i++) {
-      const option = document.createElement("option");
-      option.value = i;
-      option.textContent = i;
-      dropdown.appendChild(option);
-    }
-
-    const row = document.createElement("div");
-    row.className = "mapping-row";
-    row.appendChild(label);
-    row.appendChild(dropdown);
-    formDiv.appendChild(row);
-  });
-
-  document.getElementById("processButton").style.display = "inline-block";
-}
-
-
-    async function processAndDownload() {
-      const inputs = document.querySelectorAll("#mappingForm input");
-      const filesToProcess = [];
-
-      for (let input of inputs) {
-        const newPartNumber = input.value.trim();
-        if (!newPartNumber || isNaN(newPartNumber)) {
-          alert("All part numbers must be filled in with valid numbers.");
-          return;
+        // Add options 1 through maxParts
+        for (let i = 1; i <= maxParts; i++) {
+          const option = document.createElement("option");
+          option.value = i;
+          option.textContent = i;
+          if (i === index + 1) option.selected = true; // Pre-fill with unique values
+          dropdown.appendChild(option);
         }
 
+        const row = document.createElement("div");
+        row.className = "mapping-row";
+        row.appendChild(label);
+        row.appendChild(dropdown);
+        formDiv.appendChild(row);
+      });
+
+      document.getElementById("processButton").style.display = "inline-block";
+    }
+
+    async function processAndDownload() {
+      const dropdowns = document.querySelectorAll("#mappingForm select");
+      const filesToProcess = [];
+      const selectedPartNumbers = new Set();
+
+      for (let dropdown of dropdowns) {
+        const newPartNumber = dropdown.value.trim();
+
+        if (selectedPartNumbers.has(newPartNumber)) {
+          alert(`Duplicate part number detected: P${newPartNumber}. Each part must have a unique new ID.`);
+          return;
+        }
+        selectedPartNumbers.add(newPartNumber);
+
         filesToProcess.push({
-          url: input.dataset.url,
+          url: dropdown.dataset.url,
           newPartID: "P" + newPartNumber,
-          oldPartName: input.dataset.oldPartName
+          oldPartName: dropdown.dataset.oldPartName
         });
       }
 
@@ -104,7 +103,6 @@ function generateMappingForm() {
           const response = await fetch(file.url);
           const xml = await response.text();
 
-          // Guess old part ID by finding <score-part id="PX">
           const match = xml.match(/<score-part id="(P\d+)">/);
           if (!match) {
             alert(`Could not find part ID in file ${file.oldPartName}`);
@@ -117,7 +115,7 @@ function generateMappingForm() {
           const blob = new Blob([newXml], { type: "application/xml" });
           const link = document.createElement("a");
           link.href = URL.createObjectURL(blob);
-          link.download = `${file.oldPartName}_reassigned.xml`;
+          link.download = `${file.oldPartName}_P${file.newPartID}.xml`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
