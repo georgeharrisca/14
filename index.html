@@ -40,39 +40,46 @@
   <script>
     const mappingData = [];
 
-    function generateMappingForm() {
-      const select = document.getElementById("fileSelect");
-      const selectedOptions = Array.from(select.selectedOptions);
-      const formDiv = document.getElementById("mappingForm");
-      formDiv.innerHTML = ""; // Clear previous mappings
-      mappingData.length = 0;
+function generateMappingForm() {
+  const select = document.getElementById("fileSelect");
+  const selectedOptions = Array.from(select.selectedOptions);
+  const formDiv = document.getElementById("mappingForm");
+  formDiv.innerHTML = ""; // Clear previous mappings
+  mappingData.length = 0;
 
-      if (selectedOptions.length === 0) {
-        alert("Please select at least one XML part file.");
-        return;
-      }
+  if (selectedOptions.length === 0) {
+    alert("Please select at least one XML part file.");
+    return;
+  }
 
-      selectedOptions.forEach((opt, index) => {
-        const label = document.createElement("label");
-        label.textContent = `${opt.text} - P`;
+  const maxParts = selectedOptions.length;
 
-        const input = document.createElement("input");
-        input.type = "number";
-        input.min = "1";
-        input.placeholder = "New Part Number";
-        input.required = true;
-        input.dataset.url = opt.value;
-        input.dataset.oldPartName = opt.text;
+  selectedOptions.forEach((opt, index) => {
+    const label = document.createElement("label");
+    label.textContent = `${opt.text} - P`;
 
-        const row = document.createElement("div");
-        row.className = "mapping-row";
-        row.appendChild(label);
-        row.appendChild(input);
-        formDiv.appendChild(row);
-      });
+    const dropdown = document.createElement("select");
+    dropdown.dataset.url = opt.value;
+    dropdown.dataset.oldPartName = opt.text;
 
-      document.getElementById("processButton").style.display = "inline-block";
+    // Add options 1 through maxParts
+    for (let i = 1; i <= maxParts; i++) {
+      const option = document.createElement("option");
+      option.value = i;
+      option.textContent = i;
+      dropdown.appendChild(option);
     }
+
+    const row = document.createElement("div");
+    row.className = "mapping-row";
+    row.appendChild(label);
+    row.appendChild(dropdown);
+    formDiv.appendChild(row);
+  });
+
+  document.getElementById("processButton").style.display = "inline-block";
+}
+
 
     async function processAndDownload() {
       const inputs = document.querySelectorAll("#mappingForm input");
